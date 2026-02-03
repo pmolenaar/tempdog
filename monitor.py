@@ -9,6 +9,7 @@ import logging
 import smtplib
 import sqlite3
 import sys
+import threading
 import time
 from datetime import datetime, timedelta
 from email.mime.text import MIMEText
@@ -70,6 +71,14 @@ def get_latest_per_sensor(conn: sqlite3.Connection) -> dict[str, float]:
         WHERE id IN (SELECT MAX(id) FROM readings GROUP BY sensor)
     """).fetchall()
     return {r[0]: r[1] for r in rows}
+
+def purge_old_readings(conn: sqlite3.Connection, retention_days: int) -> int:
+    cur = conn.execute(
+        "DELETE FROM readings WHERE ts < datetime('now', 'localtime', ?)",
+        (f"-{retention_days} days",),
+    )
+    conn.commit()
+    return cur.rowcount
 
 # ---------------------------------------------------------------------------
 # Alerting
@@ -205,6 +214,23 @@ def main():
 
     conn = init_db(cfg["database"]["path"])
     alerter = Alerter(cfg)
+
+    # Retentie: verwijder oude metingen periodiek
+    retention_days = cfg["database"].get("retention_days", 90)
+
+    def retention_loop():
+        while True:
+            try:
+                deleted = purge_old_readings(conn, retention_days)
+                if deleted:
+                    logging.info("Retentie: %d metingen ouder dan %d dagen verwijderd",
+                                 deleted, retention_days)
+            except Exception:
+                logging.exception("Fout bij retentie-opschoning")
+            time.sleep(86400)  # eenmaal per dag
+
+    t = threading.Thread(target=retention_loop, daemon=True)
+    t.start()
 
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
     client.on_message = make_on_message(cfg, conn, alerter)

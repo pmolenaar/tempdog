@@ -42,6 +42,8 @@ web:
 
 database:
   path: "/var/lib/tempdog/temperatures.db"
+  # Metingen ouder dan dit aantal dagen worden automatisch verwijderd
+  retention_days: 90
 
 logging:
   level: "INFO"
