@@ -1,0 +1,48 @@
+# =============================================================================
+# Tempdog - Kantoor Temperatuur Monitoring
+# =============================================================================
+
+mqtt:
+  host: "localhost"
+  port: 1883
+  topic_prefix: "zigbee2mqtt"
+
+# Zigbee sensoren: gebruik de friendly_name zoals geconfigureerd in Zigbee2MQTT.
+# Na pairing verschijnen sensoren als "0x00158d0001234567" o.i.d.
+# Hernoem ze in de Zigbee2MQTT UI naar onderstaande namen.
+sensors:
+  - name: "kantoor_begane_grond"
+    label: "Begane grond"
+  - name: "kantoor_eerste_verdieping"
+    label: "Eerste verdieping"
+  - name: "kantoor_serverruimte"
+    label: "Serverruimte"
+
+alerting:
+  # Minimale delta (°C) tussen twee opeenvolgende metingen van dezelfde sensor
+  delta_threshold: 2.0
+  # Minimale delta (°C) tussen twee sensoren op hetzelfde moment
+  cross_sensor_threshold: 5.0
+  # Minimale tijd (seconden) tussen twee alerts voor dezelfde sensor
+  cooldown_seconds: 900
+
+  smtp:
+    host: "smtp.example.com"
+    port: 587
+    use_tls: true
+    username: "alerts@example.com"
+    password: "changeme"
+    from: "alerts@example.com"
+    to:
+      - "facilitair@example.com"
+
+web:
+  host: "0.0.0.0"
+  port: 8080
+
+database:
+  path: "/var/lib/tempdog/temperatures.db"
+
+logging:
+  level: "INFO"
+  path: "/var/log/tempdog/tempdog.log"

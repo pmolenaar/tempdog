@@ -1,0 +1,16 @@
+[Unit]
+Description=Tempdog Web Dashboard
+After=network.target tempdog-monitor.service
+
+[Service]
+Type=simple
+User=tempdog
+Group=tempdog
+ExecStart=/opt/tempdog/venv/bin/python /opt/tempdog/web.py /etc/tempdog/config.yaml
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

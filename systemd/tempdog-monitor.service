@@ -1,0 +1,17 @@
+[Unit]
+Description=Tempdog Temperature Monitor
+After=network.target mosquitto.service zigbee2mqtt.service
+Wants=mosquitto.service zigbee2mqtt.service
+
+[Service]
+Type=simple
+User=tempdog
+Group=tempdog
+ExecStart=/opt/tempdog/venv/bin/python /opt/tempdog/monitor.py /etc/tempdog/config.yaml
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

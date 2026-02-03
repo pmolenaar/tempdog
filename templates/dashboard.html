@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tempdog - Kantoor Temperatuur</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+  :root {
+    --bg: #0f172a; --surface: #1e293b; --border: #334155;
+    --text: #e2e8f0; --muted: #94a3b8;
+    --green: #22c55e; --amber: #f59e0b; --red: #ef4444; --blue: #3b82f6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  header { padding: 1.5rem 2rem; border-bottom: 1px solid var(--border); }
+  header h1 { font-size: 1.4rem; font-weight: 600; }
+  header p  { color: var(--muted); font-size: .85rem; margin-top: .25rem; }
+  .grid {
+    display: grid; gap: 1.25rem; padding: 1.5rem 2rem;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: .75rem; padding: 1.25rem;
+  }
+  .card h2 { font-size: .95rem; color: var(--muted); margin-bottom: .75rem; }
+  .temp-value { font-size: 2.4rem; font-weight: 700; }
+  .meta { color: var(--muted); font-size: .8rem; margin-top: .5rem; }
+  .chart-wrap {
+    padding: 1.5rem 2rem;
+  }
+  .chart-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: .75rem; padding: 1.25rem; margin-bottom: 1.25rem;
+  }
+  .chart-card h2 { font-size: .95rem; color: var(--muted); margin-bottom: .75rem; }
+  canvas { width: 100% !important; }
+  .toolbar { display: flex; gap: .5rem; margin-bottom: .75rem; }
+  .toolbar button {
+    background: var(--border); color: var(--text); border: none;
+    border-radius: .375rem; padding: .35rem .75rem; cursor: pointer;
+    font-size: .8rem;
+  }
+  .toolbar button.active { background: var(--blue); }
+  .status-dot {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    margin-right: 6px; vertical-align: middle;
+  }
+  .status-ok   { background: var(--green); }
+  .status-warn { background: var(--amber); }
+  .status-old  { background: var(--red); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Tempdog</h1>
+  <p>Kantoor temperatuur monitoring</p>
+</header>
+
+<div class="grid" id="cards"></div>
+<div class="chart-wrap" id="charts"></div>
+
+<script>
+const SENSORS = {{ sensors | tojson }};
+const COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444'];
+let charts = {};
+
+function statusClass(ts) {
+  if (!ts) return 'status-old';
+  const age = (Date.now() - new Date(ts).getTime()) / 60000;
+  if (age < 15) return 'status-ok';
+  if (age < 60) return 'status-warn';
+  return 'status-old';
+}
+
+function renderCards(data) {
+  const el = document.getElementById('cards');
+  el.innerHTML = '';
+  for (const [name, label] of Object.entries(SENSORS)) {
+    const r = data.find(d => d.sensor === name);
+    const card = document.createElement('div');
+    card.className = 'card';
+    if (r) {
+      card.innerHTML = `
+        <h2><span class="status-dot ${statusClass(r.ts)}"></span>${label}</h2>
+        <div class="temp-value">${r.temperature.toFixed(1)} &deg;C</div>
+        <div class="meta">
+          ${r.humidity != null ? 'Luchtvochtigheid: ' + r.humidity.toFixed(0) + '%' : ''}
+          ${r.battery != null ? ' &middot; Batterij: ' + r.battery + '%' : ''}
+          <br>Laatste meting: ${new Date(r.ts).toLocaleString('nl-NL')}
+        </div>`;
+    } else {
+      card.innerHTML = `<h2>${label}</h2><div class="meta">Geen data</div>`;
+    }
+    el.appendChild(card);
+  }
+}
+
+function makeChart(name, label, color, hours) {
+  fetch(`/api/history/${name}/${hours}`)
+    .then(r => r.json())
+    .then(data => {
+      const labels = data.map(d => new Date(d.ts).toLocaleTimeString('nl-NL', {hour:'2-digit', minute:'2-digit'}));
+      const temps  = data.map(d => d.temperature);
+      const hums   = data.map(d => d.humidity);
+
+      if (charts[name]) { charts[name].destroy(); }
+
+      const ctx = document.getElementById(`chart-${name}`).getContext('2d');
+      charts[name] = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            { label: 'Temperatuur (°C)', data: temps, borderColor: color,
+              backgroundColor: color + '22', fill: true, tension: .3, pointRadius: 0 },
+            { label: 'Luchtvochtigheid (%)', data: hums, borderColor: '#94a3b8',
+              borderDash: [4,4], tension: .3, pointRadius: 0, yAxisID: 'y1' },
+          ]
+        },
+        options: {
+          responsive: true,
+          interaction: { mode: 'index', intersect: false },
+          scales: {
+            y:  { position: 'left',  title: { display: true, text: '°C', color: '#94a3b8' },
+                  grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
+            y1: { position: 'right', title: { display: true, text: '%', color: '#94a3b8' },
+                  grid: { drawOnChartArea: false }, ticks: { color: '#94a3b8' },
+                  min: 0, max: 100 },
+            x:  { grid: { color: '#334155' }, ticks: { color: '#94a3b8', maxTicksLimit: 16 } },
+          },
+          plugins: { legend: { labels: { color: '#e2e8f0' } } },
+        }
+      });
+    });
+}
+
+function buildCharts() {
+  const wrap = document.getElementById('charts');
+  wrap.innerHTML = '';
+  let i = 0;
+  for (const [name, label] of Object.entries(SENSORS)) {
+    const color = COLORS[i++ % COLORS.length];
+    const div = document.createElement('div');
+    div.className = 'chart-card';
+    div.innerHTML = `
+      <h2>${label}</h2>
+      <div class="toolbar">
+        <button class="active" onclick="loadRange('${name}','${color}',6,this)">6u</button>
+        <button onclick="loadRange('${name}','${color}',24,this)">24u</button>
+        <button onclick="loadRange('${name}','${color}',72,this)">3d</button>
+        <button onclick="loadRange('${name}','${color}',168,this)">7d</button>
+      </div>
+      <canvas id="chart-${name}" height="180"></canvas>`;
+    wrap.appendChild(div);
+    makeChart(name, label, color, 6);
+  }
+}
+
+function loadRange(name, color, hours, btn) {
+  btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  makeChart(name, '', color, hours);
+}
+
+function refresh() {
+  fetch('/api/current').then(r => r.json()).then(renderCards);
+}
+
+refresh();
+buildCharts();
+setInterval(refresh, 30000);
+setInterval(() => {
+  let i = 0;
+  for (const [name] of Object.entries(SENSORS)) {
+    const color = COLORS[i++ % COLORS.length];
+    const active = document.querySelector(`#charts .chart-card:nth-child(${i}) .toolbar button.active`);
+    const hours = active ? parseInt(active.textContent) : 6;
+    makeChart(name, '', color, isNaN(hours) ? 6 : hours === 3 ? 72 : hours === 7 ? 168 : hours);
+  }
+}, 60000);
+</script>
+</body>
+</html>

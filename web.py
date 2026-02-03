@@ -1,0 +1,95 @@
+#!/usr/bin/env python3
+"""
+Tempdog Web - Lichtgewicht Flask dashboard voor temperatuurvisualisatie.
+"""
+
+import sqlite3
+import sys
+from pathlib import Path
+
+import yaml
+from flask import Flask, g, jsonify, render_template
+
+# ---------------------------------------------------------------------------
+# Configuratie
+# ---------------------------------------------------------------------------
+
+config_path = sys.argv[1] if len(sys.argv) > 1 else "/etc/tempdog/config.yaml"
+with open(config_path) as f:
+    CFG = yaml.safe_load(f)
+
+DB_PATH = CFG["database"]["path"]
+SENSORS = {s["name"]: s["label"] for s in CFG["sensors"]}
+
+app = Flask(__name__, template_folder="/opt/tempdog/templates")
+
+# ---------------------------------------------------------------------------
+# Database helper
+# ---------------------------------------------------------------------------
+
+def get_db() -> sqlite3.Connection:
+    if "db" not in g:
+        g.db = sqlite3.connect(DB_PATH)
+        g.db.row_factory = sqlite3.Row
+    return g.db
+
+@app.teardown_appcontext
+def close_db(_exc):
+    db = g.pop("db", None)
+    if db:
+        db.close()
+
+# ---------------------------------------------------------------------------
+# Routes
+# ---------------------------------------------------------------------------
+
+@app.route("/")
+def dashboard():
+    return render_template("dashboard.html", sensors=SENSORS)
+
+@app.route("/api/current")
+def api_current():
+    db = get_db()
+    rows = db.execute("""
+        SELECT sensor, temperature, humidity, battery, ts
+        FROM readings
+        WHERE id IN (SELECT MAX(id) FROM readings GROUP BY sensor)
+    """).fetchall()
+    return jsonify([dict(r) for r in rows])
+
+@app.route("/api/history/<sensor>")
+def api_history(sensor):
+    db = get_db()
+    rows = db.execute("""
+        SELECT temperature, humidity, ts
+        FROM readings
+        WHERE sensor = ?
+        ORDER BY id DESC
+        LIMIT 2880
+    """, (sensor,)).fetchall()
+    # Chronologisch (oudste eerst)
+    data = [dict(r) for r in reversed(rows)]
+    return jsonify(data)
+
+@app.route("/api/history/<sensor>/<int:hours>")
+def api_history_hours(sensor, hours):
+    db = get_db()
+    rows = db.execute("""
+        SELECT temperature, humidity, ts
+        FROM readings
+        WHERE sensor = ?
+          AND ts >= datetime('now', 'localtime', ?)
+        ORDER BY ts ASC
+    """, (sensor, f"-{hours} hours")).fetchall()
+    return jsonify([dict(r) for r in rows])
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
+if __name__ == "__main__":
+    app.run(
+        host=CFG["web"]["host"],
+        port=CFG["web"]["port"],
+        debug=False,
+    )
