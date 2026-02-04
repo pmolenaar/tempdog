@@ -314,6 +314,7 @@ echo "${INNER_SCRIPT}" > "${INNER_SCRIPT_FILE}"
 chmod +x "${INNER_SCRIPT_FILE}"
 
 docker run --rm --privileged \
+    --platform linux/amd64 \
     -v "${SCRIPT_DIR}/${OUTPUT_IMG}:/work/output.img" \
     -v "${SCRIPT_DIR}:/work/project:ro" \
     -v "${INNER_SCRIPT_FILE}:/work/build.sh:ro" \
