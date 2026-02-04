@@ -122,7 +122,7 @@ fi
 
 # --- Image vergroten ---
 info "Image vergroten naar ${IMAGE_SIZE_GB} GB..."
-CURRENT_SIZE=$(stat -c%s "${IMG}")
+CURRENT_SIZE=$(wc -c < "${IMG}" | tr -d ' ')
 TARGET_SIZE=$((IMAGE_SIZE_GB * 1024 * 1024 * 1024))
 if [ "${CURRENT_SIZE}" -lt "${TARGET_SIZE}" ]; then
     truncate -s "${IMAGE_SIZE_GB}G" "${IMG}"
