@@ -53,9 +53,9 @@ apt-get install -y -qq \
 # ---------------------------------------------------------------------------
 # 2. Node.js (voor Zigbee2MQTT)
 # ---------------------------------------------------------------------------
-if ! command -v node &>/dev/null || [[ $(node -v | cut -d. -f1 | tr -d v) -lt 18 ]]; then
-    info "Node.js 20 LTS installeren..."
-    curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+if ! command -v node &>/dev/null || [[ $(node -v | cut -d. -f1 | tr -d v) -lt 22 ]]; then
+    info "Node.js 22 LTS installeren..."
+    curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
     apt-get install -y -qq nodejs
 fi
 info "Node.js versie: $(node -v)"
