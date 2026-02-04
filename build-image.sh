@@ -44,7 +44,27 @@ fi
 info "Docker is beschikbaar"
 
 # ---------------------------------------------------------------------------
-# 2. Raspberry Pi OS image downloaden
+# 2. Pi model selecteren
+# ---------------------------------------------------------------------------
+echo ""
+echo "Op welk Raspberry Pi model gaat Tempdog draaien?"
+echo ""
+echo "  1) Raspberry Pi 3 (1 GB RAM)"
+echo "  2) Raspberry Pi 4 / 5 (2+ GB RAM)"
+echo ""
+read -rp "Keuze [2]: " PI_MODEL_CHOICE
+PI_MODEL_CHOICE="${PI_MODEL_CHOICE:-2}"
+
+ENABLE_SWAP=false
+if [[ "${PI_MODEL_CHOICE}" == "1" ]]; then
+    ENABLE_SWAP=true
+    info "Pi 3 geselecteerd: 512 MB swapfile wordt geconfigureerd"
+else
+    info "Pi 4/5 geselecteerd: geen extra swap nodig"
+fi
+
+# ---------------------------------------------------------------------------
+# 3. Raspberry Pi OS image downloaden
 # ---------------------------------------------------------------------------
 if [[ -f "${SCRIPT_DIR}/${PI_OS_IMG}" ]]; then
     info "Pi OS image gevonden (cache): ${PI_OS_IMG}"
@@ -79,6 +99,7 @@ IMG="/work/output.img"
 MNT="/mnt/pi"
 PROJECT="/work/project"
 IMAGE_SIZE_GB="${IMAGE_SIZE_GB}"
+ENABLE_SWAP="${ENABLE_SWAP}"
 
 # --- Tools installeren ---
 info "Container-tools installeren..."
@@ -221,6 +242,22 @@ if [ -n "${BOOT_DIR}" ]; then
     echo "pi:${ENCRYPTED_PW}" > "${BOOT_DIR}/userconf.txt"
 fi
 
+# --- Swap configureren (Pi 3) ---
+if [ "${ENABLE_SWAP}" = "true" ]; then
+    info "Swapfile configureren voor Pi 3 (512 MB)..."
+    # dphys-swapfile is standaard aanwezig in Pi OS, configuratie aanpassen
+    if [ -f "${MNT}/etc/dphys-swapfile" ]; then
+        sed -i 's/^CONF_SWAPSIZE=.*/CONF_SWAPSIZE=512/' "${MNT}/etc/dphys-swapfile"
+        sed -i 's/^#CONF_SWAPSIZE=.*/CONF_SWAPSIZE=512/' "${MNT}/etc/dphys-swapfile"
+    else
+        echo "CONF_SWAPSIZE=512" > "${MNT}/etc/dphys-swapfile"
+    fi
+    chroot "${MNT}" /bin/bash -c "systemctl enable dphys-swapfile 2>/dev/null || true"
+    info "Swapfile van 512 MB wordt aangemaakt bij eerste boot"
+else
+    info "Geen extra swap geconfigureerd"
+fi
+
 # --- Firstboot service installeren ---
 info "Firstboot service installeren..."
 cp "${PROJECT}/firstboot.sh" "${MNT}/opt/tempdog/firstboot.sh"
@@ -281,6 +318,7 @@ docker run --rm --privileged \
     -v "${SCRIPT_DIR}:/work/project:ro" \
     -v "${INNER_SCRIPT_FILE}:/work/build.sh:ro" \
     -e "IMAGE_SIZE_GB=${IMAGE_SIZE_GB}" \
+    -e "ENABLE_SWAP=${ENABLE_SWAP}" \
     debian:bookworm \
     bash /work/build.sh
 
