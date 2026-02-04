@@ -98,8 +98,54 @@ function renderCards(data) {
   }
 }
 
+// Plugin om kantooruren (7:00-18:00) te markeren met achtergrondkleur
+const workHoursPlugin = {
+  id: 'workHours',
+  beforeDraw(chart) {
+    const {ctx, chartArea, scales} = chart;
+    if (!chartArea || !scales.x) return;
+
+    const labels = chart.data.labels;
+    if (!labels || labels.length === 0) return;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(59, 130, 246, 0.08)'; // Subtiele blauwe tint
+
+    let inWorkHours = false;
+    let startX = null;
+
+    labels.forEach((label, i) => {
+      // Parse uur uit label (formaat "HH:MM")
+      const hour = parseInt(label.split(':')[0], 10);
+      const isWorkHour = hour >= 7 && hour < 18;
+      const x = scales.x.getPixelForValue(i);
+
+      if (isWorkHour && !inWorkHours) {
+        startX = x;
+        inWorkHours = true;
+      } else if (!isWorkHour && inWorkHours) {
+        ctx.fillRect(startX, chartArea.top, x - startX, chartArea.bottom - chartArea.top);
+        inWorkHours = false;
+      }
+    });
+
+    // Sluit af als we in werkuren eindigen
+    if (inWorkHours && startX !== null) {
+      const endX = scales.x.getPixelForValue(labels.length - 1);
+      ctx.fillRect(startX, chartArea.top, endX - startX, chartArea.bottom - chartArea.top);
+    }
+
+    ctx.restore();
+  }
+};
+
+Chart.register(workHoursPlugin);
+
 function makeChart(name, label, color, hours) {
-  fetch(`/api/history/${name}/${hours}`)
+  const isWorkday = hours === 'workday';
+  const apiUrl = isWorkday ? `/api/history/${name}/workday` : `/api/history/${name}/${hours}`;
+
+  fetch(apiUrl)
     .then(r => r.json())
     .then(data => {
       const labels = data.map(d => new Date(d.ts).toLocaleTimeString('nl-NL', {hour:'2-digit', minute:'2-digit'}));
@@ -152,6 +198,7 @@ function buildCharts() {
         <button onclick="loadRange('${name}','${color}',24,this)">24u</button>
         <button onclick="loadRange('${name}','${color}',72,this)">3d</button>
         <button onclick="loadRange('${name}','${color}',168,this)">7d</button>
+        <button onclick="loadRange('${name}','${color}','workday',this)">Werkdag</button>
       </div>
       <canvas id="chart-${name}" height="180"></canvas>`;
     wrap.appendChild(div);
@@ -177,8 +224,12 @@ setInterval(() => {
   for (const [name] of Object.entries(SENSORS)) {
     const color = COLORS[i++ % COLORS.length];
     const active = document.querySelector(`#charts .chart-card:nth-child(${i}) .toolbar button.active`);
-    const hours = active ? parseInt(active.textContent) : 6;
-    makeChart(name, '', color, isNaN(hours) ? 6 : hours === 3 ? 72 : hours === 7 ? 168 : hours);
+    if (!active) { makeChart(name, '', color, 6); continue; }
+    const text = active.textContent.trim();
+    if (text === 'Werkdag') { makeChart(name, '', color, 'workday'); }
+    else if (text === '3d') { makeChart(name, '', color, 72); }
+    else if (text === '7d') { makeChart(name, '', color, 168); }
+    else { makeChart(name, '', color, parseInt(text) || 6); }
   }
 }, 60000);
 </script>

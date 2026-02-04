@@ -83,6 +83,21 @@ def api_history_hours(sensor, hours):
     """, (sensor, f"-{hours} hours")).fetchall()
     return jsonify([dict(r) for r in rows])
 
+@app.route("/api/history/<sensor>/workday")
+def api_history_workday(sensor):
+    """Retourneert alleen metingen van vandaag tussen 7:00 en 18:00."""
+    db = get_db()
+    rows = db.execute("""
+        SELECT temperature, humidity, ts
+        FROM readings
+        WHERE sensor = ?
+          AND date(ts) = date('now', 'localtime')
+          AND cast(strftime('%H', ts) as integer) >= 7
+          AND cast(strftime('%H', ts) as integer) < 18
+        ORDER BY ts ASC
+    """, (sensor,)).fetchall()
+    return jsonify([dict(r) for r in rows])
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
