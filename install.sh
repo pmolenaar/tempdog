@@ -60,6 +60,12 @@ if ! command -v node &>/dev/null || [[ $(node -v | cut -d. -f1 | tr -d v) -lt 22
 fi
 info "Node.js versie: $(node -v)"
 
+# pnpm (vereist door Zigbee2MQTT)
+if ! command -v pnpm &>/dev/null; then
+    info "pnpm installeren..."
+    npm install -g pnpm
+fi
+
 # ---------------------------------------------------------------------------
 # 3. Zigbee2MQTT
 # ---------------------------------------------------------------------------
@@ -68,7 +74,7 @@ if [[ ! -d "${Z2M_DIR}" ]]; then
     info "Zigbee2MQTT installeren..."
     git clone --depth 1 https://github.com/Koenkk/zigbee2mqtt.git "${Z2M_DIR}"
     cd "${Z2M_DIR}"
-    npm ci --omit=dev || npm install --omit=dev
+    pnpm install
     cd "${SCRIPT_DIR}"
 else
     info "Zigbee2MQTT is al aanwezig, overslaan."
