@@ -1,0 +1,13 @@
+[Unit]
+Description=Tempdog First Boot Configuration
+After=local-fs.target
+Before=mosquitto.service zigbee2mqtt.service tempdog-monitor.service
+ConditionPathExists=/opt/tempdog/firstboot.sh
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /opt/tempdog/firstboot.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

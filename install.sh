@@ -29,8 +29,15 @@ error() { echo -e "${RED}[ERROR]${NC} $*"; exit 1; }
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Detecteer of systemd actief is (niet het geval in een chroot)
+SYSTEMD_ACTIVE=false
+if [ -d /run/systemd/system ]; then
+    SYSTEMD_ACTIVE=true
+fi
+
 info "Tempdog installer gestart"
 info "Bronbestanden: ${SCRIPT_DIR}"
+${SYSTEMD_ACTIVE} || info "Chroot-modus gedetecteerd: services worden ingeschakeld maar niet gestart"
 
 # ---------------------------------------------------------------------------
 # 1. Systeempakketten
@@ -171,31 +178,37 @@ cp "${SCRIPT_DIR}/systemd/tempdog-web.service"     /etc/systemd/system/
 # 5. Services activeren
 # ---------------------------------------------------------------------------
 info "Services activeren..."
-systemctl daemon-reload
+
+if ${SYSTEMD_ACTIVE}; then
+    systemctl daemon-reload
+fi
 
 systemctl enable mosquitto
 systemctl enable zigbee2mqtt
 systemctl enable tempdog-monitor
 systemctl enable tempdog-web
 
-systemctl start mosquitto
+if ${SYSTEMD_ACTIVE}; then
+    systemctl start mosquitto
 
-# Zigbee2MQTT nog niet starten als config nog default is
-if grep -q "/dev/ttyACM0" "${Z2M_DATA}/configuration.yaml"; then
-    warn "Zigbee2MQTT is geconfigureerd met de standaard serial port (/dev/ttyACM0)."
-    warn "Controleer of dit klopt voor jouw Zigbee USB-stick voordat je start:"
-    warn "  sudo systemctl start zigbee2mqtt"
-else
-    systemctl start zigbee2mqtt
+    # Zigbee2MQTT nog niet starten als config nog default is
+    if grep -q "/dev/ttyACM0" "${Z2M_DATA}/configuration.yaml"; then
+        warn "Zigbee2MQTT is geconfigureerd met de standaard serial port (/dev/ttyACM0)."
+        warn "Controleer of dit klopt voor jouw Zigbee USB-stick voordat je start:"
+        warn "  sudo systemctl start zigbee2mqtt"
+    else
+        systemctl start zigbee2mqtt
+    fi
+
+    systemctl start tempdog-monitor
+    systemctl start tempdog-web
 fi
-
-systemctl start tempdog-monitor
-systemctl start tempdog-web
 
 # ---------------------------------------------------------------------------
 # 6. Samenvatting
 # ---------------------------------------------------------------------------
-PI_IP=$(hostname -I | awk '{print $1}')
+PI_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+PI_IP=${PI_IP:-"<ip-adres>"}
 
 echo ""
 echo "============================================================================="
