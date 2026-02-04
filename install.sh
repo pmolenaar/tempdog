@@ -68,7 +68,7 @@ if [[ ! -d "${Z2M_DIR}" ]]; then
     info "Zigbee2MQTT installeren..."
     git clone --depth 1 https://github.com/Koenkk/zigbee2mqtt.git "${Z2M_DIR}"
     cd "${Z2M_DIR}"
-    npm ci --production
+    npm ci --omit=dev || npm install --omit=dev
     cd "${SCRIPT_DIR}"
 else
     info "Zigbee2MQTT is al aanwezig, overslaan."
