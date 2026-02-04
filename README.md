@@ -25,15 +25,37 @@ Zigbee sensoren  →  USB-stick  →  Zigbee2MQTT  →  Mosquitto (MQTT)
 
 ## Installatie
 
-Kopieer het project naar de Pi en voer het installatiescript uit:
+### 1. Raspberry Pi OS op de SD-kaart zetten
+
+Gebruik de [Raspberry Pi Imager](https://www.raspberrypi.com/software/):
+
+- Kies **Raspberry Pi OS Lite (64-bit)** als besturingssysteem
+- Klik op het tandwiel (⚙) en configureer:
+  - **Hostname:** `tempdog`
+  - **SSH inschakelen** (wachtwoordauthenticatie)
+  - **Gebruikersnaam/wachtwoord** instellen
+  - **WiFi** configureren (als je geen ethernetkabel gebruikt)
+- Schrijf naar de SD-kaart
+
+### 2. Pi opstarten en verbinden
+
+Plaats de SD-kaart, sluit de Zigbee USB-stick aan en start de Pi op. Verbind via SSH:
 
 ```bash
-git clone https://github.com/pmolenaar/tempdog.git
-cd tempdog
-sudo bash install.sh
+ssh <gebruikersnaam>@tempdog.local
 ```
 
-Het script installeert automatisch Mosquitto, Node.js, Zigbee2MQTT, Python dependencies en alle systemd services.
+### 3. Bestanden downloaden en setup uitvoeren
+
+Een verse Raspberry Pi OS installatie heeft geen `git`. Download het project als archief met `curl` (standaard beschikbaar):
+
+```bash
+curl -L https://github.com/pmolenaar/tempdog/archive/refs/heads/main.tar.gz | tar xz
+cd tempdog-main
+sudo bash setup.sh
+```
+
+Het script installeert automatisch Mosquitto, Node.js, Zigbee2MQTT, Python dependencies en alle systemd services. Bij een Pi 3 wordt ook extra swap geconfigureerd.
 
 ### Na installatie
 
@@ -45,7 +67,7 @@ Het script installeert automatisch Mosquitto, Node.js, Zigbee2MQTT, Python depen
    sudo systemctl start zigbee2mqtt
    ```
 
-2. **Sensoren pairen** -- open de Zigbee2MQTT frontend op `http://<pi-ip>:8081`, schakel "Permit join" in en zet de sensor in pairing-modus (zie handleiding van de sensor). Hernoem elke sensor naar de naam uit de config, bijvoorbeeld `kantoor_begane_grond`.
+2. **Sensoren pairen** -- open de Zigbee2MQTT frontend op `http://tempdog.local:8081`, schakel "Permit join" in en zet de sensor in pairing-modus (zie handleiding van de sensor). Hernoem elke sensor naar de naam uit de config, bijvoorbeeld `kantoor_begane_grond`.
 
 3. **E-mailalerts instellen** -- vul de SMTP-gegevens in:
 
