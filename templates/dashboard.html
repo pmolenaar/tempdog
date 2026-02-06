@@ -218,7 +218,7 @@ function refresh() {
 
 refresh();
 buildCharts();
-setInterval(refresh, 30000);
+setInterval(refresh, 1000);
 setInterval(() => {
   let i = 0;
   for (const [name] of Object.entries(SENSORS)) {
@@ -231,7 +231,7 @@ setInterval(() => {
     else if (text === '7d') { makeChart(name, '', color, 168); }
     else { makeChart(name, '', color, parseInt(text) || 6); }
   }
-}, 60000);
+}, 5000);
 </script>
 </body>
 </html>
