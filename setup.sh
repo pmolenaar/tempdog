@@ -81,13 +81,25 @@ sed -i 's/127\.0\.1\.1.*/127.0.1.1\ttempdog/' /etc/hosts
 hostname tempdog
 
 # ---------------------------------------------------------------------------
-# 3. Installatie uitvoeren
+# 3. WiFi power management uitschakelen (voorkomt connectiviteitsproblemen)
+# ---------------------------------------------------------------------------
+info "WiFi power management uitschakelen..."
+mkdir -p /etc/NetworkManager/conf.d
+cat > /etc/NetworkManager/conf.d/wifi-powersave-off.conf <<EOF
+[connection]
+wifi.powersave = 2
+EOF
+systemctl restart NetworkManager 2>/dev/null || true
+info "WiFi power saving uitgeschakeld"
+
+# ---------------------------------------------------------------------------
+# 4. Installatie uitvoeren
 # ---------------------------------------------------------------------------
 info "Tempdog installatie starten..."
 bash "${SCRIPT_DIR}/install.sh"
 
 # ---------------------------------------------------------------------------
-# 4. Samenvatting
+# 5. Samenvatting
 # ---------------------------------------------------------------------------
 PI_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
 PI_IP=${PI_IP:-"<ip-adres>"}
