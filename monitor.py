@@ -232,15 +232,20 @@ def main():
     t = threading.Thread(target=retention_loop, daemon=True)
     t.start()
 
+    topic = f"{cfg['mqtt']['topic_prefix']}/#"
+
+    def on_connect(client, userdata, flags, reason_code, properties):
+        logging.info("MQTT verbonden (rc=%s), subscribe op %s", reason_code, topic)
+        client.subscribe(topic)
+
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+    client.on_connect = on_connect
     client.on_message = make_on_message(cfg, conn, alerter)
 
-    topic = f"{cfg['mqtt']['topic_prefix']}/#"
     logging.info("Verbinden met MQTT %s:%d, topic %s",
                  cfg["mqtt"]["host"], cfg["mqtt"]["port"], topic)
 
     client.connect(cfg["mqtt"]["host"], cfg["mqtt"]["port"])
-    client.subscribe(topic)
     client.loop_forever()
 
 
