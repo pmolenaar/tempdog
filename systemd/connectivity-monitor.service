@@ -1,0 +1,13 @@
+[Unit]
+Description=Network Connectivity Monitor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/opt/tempdog/connectivity-monitor.sh
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
