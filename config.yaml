@@ -11,12 +11,20 @@ mqtt:
 # Na pairing verschijnen sensoren als "0x00158d0001234567" o.i.d.
 # Hernoem ze in de Zigbee2MQTT UI naar onderstaande namen.
 sensors:
-  - name: "kantoor_begane_grond"
-    label: "Begane grond"
-  - name: "kantoor_eerste_verdieping"
-    label: "Eerste verdieping"
-  - name: "kantoor_serverruimte"
-    label: "Serverruimte"
+  - name: "luchtzak1"
+    label: "luchtzak1"
+  - name: "luchtzak2"
+    label: "luchtzak2"
+
+  # Toekomstige sensoren werkvloer (uncomment na pairing):
+  # - name: "werkvloer_1"
+  #   label: "Werkvloer 1"
+  # - name: "werkvloer_2"
+  #   label: "Werkvloer 2"
+  # - name: "werkvloer_3"
+  #   label: "Werkvloer 3"
+  # - name: "werkvloer_4"
+  #   label: "Werkvloer 4"
 
 alerting:
   # Minimale delta (°C) tussen twee opeenvolgende metingen van dezelfde sensor
