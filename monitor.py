@@ -18,6 +18,8 @@ from pathlib import Path
 import paho.mqtt.client as mqtt
 import yaml
 
+from util import is_ieee_address
+
 # ---------------------------------------------------------------------------
 # Configuratie
 # ---------------------------------------------------------------------------
@@ -157,7 +159,6 @@ class Alerter:
 # ---------------------------------------------------------------------------
 
 def make_on_message(cfg, conn, alerter):
-    sensor_names = {s["name"] for s in cfg["sensors"]}
     prefix = cfg["mqtt"]["topic_prefix"]
 
     def on_message(_client, _userdata, msg):
@@ -166,7 +167,8 @@ def make_on_message(cfg, conn, alerter):
         if len(parts) < 2:
             return
         sensor = parts[1]
-        if sensor not in sensor_names:
+        # Negeer apparaten die nog geen friendly_name hebben (IEEE-adres)
+        if is_ieee_address(sensor):
             return
 
         try:

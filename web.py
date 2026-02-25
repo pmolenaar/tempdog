@@ -10,6 +10,8 @@ from pathlib import Path
 import yaml
 from flask import Flask, g, jsonify, render_template
 
+from util import is_ieee_address
+
 # ---------------------------------------------------------------------------
 # Configuratie
 # ---------------------------------------------------------------------------
@@ -19,7 +21,7 @@ with open(config_path) as f:
     CFG = yaml.safe_load(f)
 
 DB_PATH = CFG["database"]["path"]
-SENSORS = {s["name"]: s["label"] for s in CFG["sensors"]}
+SENSOR_LABELS = {s["name"]: s["label"] for s in CFG["sensors"]}
 
 app = Flask(__name__, template_folder="/opt/tempdog/templates")
 
@@ -45,7 +47,21 @@ def close_db(_exc):
 
 @app.route("/")
 def dashboard():
-    return render_template("dashboard.html", sensors=SENSORS)
+    return render_template("dashboard.html")
+
+@app.route("/api/sensors")
+def api_sensors():
+    """Retourneert alle bekende sensoren (config + auto-discovered uit DB)."""
+    db = get_db()
+    rows = db.execute("SELECT DISTINCT sensor FROM readings").fetchall()
+    # Start met sensoren uit config (behoud volgorde en custom labels)
+    sensors = dict(SENSOR_LABELS)
+    # Voeg auto-discovered sensoren toe (naam = label), filter IEEE-adressen
+    for row in rows:
+        name = row[0]
+        if name not in sensors and not is_ieee_address(name):
+            sensors[name] = name
+    return jsonify(sensors)
 
 @app.route("/api/current")
 def api_current():

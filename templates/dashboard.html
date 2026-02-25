@@ -63,7 +63,7 @@
 <div class="chart-wrap" id="charts"></div>
 
 <script>
-const SENSORS = {{ sensors | tojson }};
+let SENSORS = {};
 const COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444'];
 let charts = {};
 
@@ -216,10 +216,17 @@ function refresh() {
   fetch('/api/current').then(r => r.json()).then(renderCards);
 }
 
-refresh();
-buildCharts();
-setInterval(refresh, 1000);
-setInterval(() => {
+function fetchSensors() {
+  return fetch('/api/sensors').then(r => r.json());
+}
+
+function sensorsChanged(newSensors) {
+  const oldKeys = Object.keys(SENSORS).sort().join(',');
+  const newKeys = Object.keys(newSensors).sort().join(',');
+  return oldKeys !== newKeys;
+}
+
+function refreshCharts() {
   let i = 0;
   for (const [name] of Object.entries(SENSORS)) {
     const color = COLORS[i++ % COLORS.length];
@@ -231,7 +238,27 @@ setInterval(() => {
     else if (text === '7d') { makeChart(name, '', color, 168); }
     else { makeChart(name, '', color, parseInt(text) || 6); }
   }
-}, 5000);
+}
+
+// Initialisatie: haal sensoren op, bouw daarna pas het dashboard
+fetchSensors().then(sensors => {
+  SENSORS = sensors;
+  refresh();
+  buildCharts();
+});
+
+setInterval(refresh, 1000);
+setInterval(refreshCharts, 5000);
+
+// Controleer periodiek op nieuwe sensoren
+setInterval(() => {
+  fetchSensors().then(sensors => {
+    if (sensorsChanged(sensors)) {
+      SENSORS = sensors;
+      buildCharts();
+    }
+  });
+}, 10000);
 </script>
 </body>
 </html>
