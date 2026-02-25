@@ -177,6 +177,9 @@ def make_on_message(cfg, conn, alerter):
             logging.warning("Ongeldig JSON payload op %s", msg.topic)
             return
 
+        if not isinstance(payload, dict):
+            return
+
         temp = payload.get("temperature")
         if temp is None:
             return
